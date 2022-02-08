@@ -138,6 +138,13 @@ class CrazyMapDriver {
         await this.gmap.init();
         this.carSprite = await this.loadImage("car.png");
         this.keyboard.startListening();
+        try {
+            let geoipReq = await fetch("https://reallyfreegeoip.org/json/");
+            let geolocation = await geoipReq.json();
+            this.setPosition(geolocation.latitude,geolocation.longitude);
+        } catch(e) {
+            console.error("Unknown error occurred while fetching geolocation data");
+        }
         this.mainloop(0);
     } 
 
