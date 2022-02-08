@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="shortcut icon" href="crazymapdriver.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bayon&display=swap" rel="stylesheet"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crazy Map Driver</title>
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+            box-sizing: border-box;
+        }
+        #container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #game {
+            border: 5px solid black;
+            border-radius: 2px;
+        }
+        body {
+            background: url("bg.png");
+            background-repeat: no-repeat;
+            background-size: cover;
+            font-family: 'Bayon', sans-serif;
+        }
+        .el {
+            background: white;
+            padding: 8px;
+            border-radius: 20px;
+            margin: 10px;
+            border: 0px;
+            outline: none;
+        }
+        #header {
+            display: flex;
+        }
+        #logo {
+            width: 32px;
+            margin: 5px;
+            height: 32px;
+        }
+        button {
+            cursor: pointer;
+        }
+        button:hover {
+            background: rgb(206, 206, 206);
+        }
+        button:active {
+            background: rgb(153, 153, 153);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="header" class="el">
+            <h2>Crazy Map Driver</h2>
+            <img src="crazymapdriver.png" id="logo" alt="">
+        </div>
+        <button class="el" id="pos-btn">
+            <img src="position-crosshair.svg" alt="">
+        </button>
+        <canvas id="game">
+        </canvas>
+        <div class="el">
+            WASD - To move around
+        </div>
+    </div>
+</body>
+<script src="CrazyMapsDriver.js"></script>
+</html>
