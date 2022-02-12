@@ -28,7 +28,6 @@ class CrazyMapDriver {
         this.turnSpeed = 0.002;
         this.angularDrag = 0.95;
         this.drag = 0.95;
-        this.syncLoop = setInterval(()=>{},100);
         this.car = {
             xVelocity: 0,
             yVelocity: 0,
@@ -43,7 +42,20 @@ class CrazyMapDriver {
         this.canvasCenterX = this.canvas.width / 2;
         this.canvasCenterY = this.canvas.height / 2;
         this.halfCar = this.carDimensions / 2;
-        //this.socket = new Worker("socketworker.js");
+        this.socket = new Worker("socketworker.js");
+        this.pktDataFields = {
+            ID: 0,
+            X_VELOCITY: 1,
+            Y_VELOCITY: 2,
+            POWER: 3,
+            REVERSE: 4,
+            ANGLE: 5,
+            ANGULAR_VELOCITY: 6,
+            X_POS: 7,
+            Y_POS: 8
+        }
+        this.lastNetUpdate = 0;
+        this.deltaNetUpdate = 100;
     }
 
     resizeCanvas() {
@@ -61,7 +73,8 @@ class CrazyMapDriver {
         }
       }
 
-    update(deltaTime) {
+    update(time) {
+        let deltaTime = (time - this.lastTimeStamp) / 10;
         if (this.keyboard.isKeyPressed("KeyW")) {
             this.car.power += this.powerFactor;
         } else {
@@ -85,8 +98,10 @@ class CrazyMapDriver {
             this.car.angularVelocity += direction * this.turnSpeed;
         }
 
-        this.car.xVelocity += Math.sin(this.car.angle) * (this.car.power - this.car.reverse);
-        this.car.yVelocity += Math.cos(this.car.angle) * (this.car.power - this.car.reverse);
+        let eVel = this.car.power - this.car.reverse;
+
+        this.car.xVelocity += Math.sin(this.car.angle) * eVel;
+        this.car.yVelocity += Math.cos(this.car.angle) * eVel;
 
         this.position.x += this.car.xVelocity;
         this.position.y -= this.car.yVelocity;
@@ -94,6 +109,23 @@ class CrazyMapDriver {
         this.car.yVelocity *= this.drag;
         this.car.angle += this.car.angularVelocity;
         this.car.angularVelocity *= this.angularDrag;
+        for (const netCar in this.netCars) {
+            this.netCars[netCar][this.pktDataFields.POWER] = Math.max(0, Math.min(this.maxPower, this.netCars[netCar][this.pktDataFields.POWER]));
+            this.netCars[netCar][this.pktDataFields.REVERSE] = Math.max(0, Math.min(this.maxReverse, this.netCars[netCar][this.pktDataFields.REVERSE]));
+            let eVel = this.netCars[netCar][this.pktDataFields.POWER] - this.netCars[netCar][this.pktDataFields.REVERSE];
+            this.netCars[netCar][this.pktDataFields.X_VELOCITY] += Math.sin(this.netCars[netCar][this.pktDataFields.ANGLE]) * eVel;
+            this.netCars[netCar][this.pktDataFields.Y_VELOCITY] += Math.cos(this.netCars[netCar][this.pktDataFields.ANGLE]) * eVel;
+            this.netCars[netCar][this.pktDataFields.X_POS] += this.netCars[netCar][this.pktDataFields.X_VELOCITY];
+            this.netCars[netCar][this.pktDataFields.Y_POS] -= this.netCars[netCar][this.pktDataFields.Y_VELOCITY];
+            this.netCars[netCar][this.pktDataFields.X_VELOCITY] *= this.drag;
+            this.netCars[netCar][this.pktDataFields.Y_VELOCITY] *= this.drag;
+            this.netCars[netCar][this.pktDataFields.ANGLE] += this.netCars[netCar][this.pktDataFields.ANGULAR_VELOCITY];
+            this.netCars[netCar][this.pktDataFields.ANGULAR_VELOCITY] *= this.angularDrag;
+        }
+        if ((time - this.lastNetUpdate) >= this.deltaNetUpdate) {
+            this.socket.postMessage({ car: this.car, pos: this.position });
+            this.lastNetUpdate = time;
+        }
     }
 
     draw() {
@@ -129,11 +161,11 @@ class CrazyMapDriver {
             this.carDimensions
         );
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        Object.keys(this.netCars).forEach(carK => {
-            let netX = this.netCars[carK][1] - this.position.x + this.canvasCenterX;
-            let netY =  this.netCars[carK][2] - this.position.y + this.canvasCenterY;
+        for (const carK in this.netCars) {
+            let netX = this.netCars[carK][this.pktDataFields.X_POS] - this.position.x + this.canvasCenterX;
+            let netY =  this.netCars[carK][this.pktDataFields.Y_POS] - this.position.y + this.canvasCenterY;
             this.ctx.translate(netX, netY);
-            this.ctx.rotate(this.netCars[carK][3]);
+            this.ctx.rotate(this.netCars[carK][this.pktDataFields.ANGLE]);
             this.ctx.translate(-netX, -netY);
             this.ctx.drawImage(
                 this.carSprite,
@@ -144,52 +176,16 @@ class CrazyMapDriver {
             );
             this.ctx.setTransform(1, 0, 0, 1, 0, 0);
             this.ctx.fillText(this.netPlayers[carK], netX, netY - 25); 
-        });
+        }
     }
 
     mainloop(t) {
         if (!this.isRunning) {  return; }
-        let deltaTime = (t - this.lastTimeStamp) / 10;
-        this.update(deltaTime);
+        this.update(t);
         this.draw();
         this.lastTimeStamp = t;
         requestAnimationFrame((time) => {
             this.mainloop(time)
-        });
-    }
-
-    async sockConnect() {
-        return new Promise((resolve, reject) => {
-            this.ws = new WebSocket(`${window.location.protocol === "http:" ? "ws" : "wss"}://${window.location.host}`);
-            this.ws.addEventListener("message", (event) => {
-                try {
-                    if (event.data.startsWith("!")) {
-                        let command = event.data.substring(1);
-                        let [username,id] = command.split("|");
-                        this.netPlayers[id] = username;
-                    } else if (event.data.startsWith("#")) {
-                        let pid = event.data.substring(1);
-                        delete this.netPlayers[pid];
-                        delete this.netCars[pid];
-                    } else {
-                        let pkt = event.data.split("|").map(e => parseFloat(e));
-                        if (this.netCars[pkt[0]]) {
-                            pkt[1]  = this.netCars[pkt[0]][1] +(pkt[1] - this.netCars[pkt[0]][1]) * 0.4; 
-                            pkt[2]  = this.netCars[pkt[0]][2] +(pkt[2] - this.netCars[pkt[0]][2]) * 0.4; 
-                        }
-                        this.netCars[pkt[0]] = pkt;
-                    }
-                } catch(error) {
-                    console.error("Bogus data received from other client");
-                    console.error(error);
-                }
-            });
-            this.ws.addEventListener("open", (event) => {
-                resolve();
-            });
-            this.ws.addEventListener("error", () => {
-                reject();
-            });
         });
     }
 
@@ -207,19 +203,30 @@ class CrazyMapDriver {
         } catch(e) {
             console.error("Unknown error occurred while fetching geolocation data");
         }
-        try {
-            await this.sockConnect();
-        } catch(e) {
-            console.error("An error occurred while connecting to the socket");
+        this.socket.onmessage = (event) => {
+            try {
+                if (event.data.startsWith("!")) {
+                    let command = event.data.substring(1);
+                    let [username,id] = command.split("|");
+                    this.netPlayers[id] = username;
+                } else if (event.data.startsWith("#")) {
+                    let pid = event.data.substring(1);
+                    delete this.netPlayers[pid];
+                    delete this.netCars[pid];
+                } else {
+                    let pkt = event.data.split("|").map(e => parseFloat(e));
+                    this.netCars[pkt[this.pktDataFields.ID]] = pkt;
+                }
+            } catch(error) {
+                console.error("Bogus data received from other client");
+                console.error(error);
+            }
         }
-        this.syncLoop = setInterval(() => {
-            this.ws.send(`${this.position.x}|${this.position.y}|${this.car.angle}`);
-        }, 250);
+        this.socket.postMessage({ connect: `${window.location.protocol === "http:" ? "ws" : "wss"}://${window.location.host}` });
         this.mainloop(0);
     }
 
     stop() {
-        clearInterval(this.syncLoop);
         this.isRunning = false;
     }
 
@@ -345,7 +352,7 @@ class KeyboardManager {
 
 window.onload = () => {
     let canvas = document.getElementById("game");
-    let game = new CrazyMapDriver(canvas);
+    window.game = new CrazyMapDriver(canvas);
     game.run();
     let positionButton = document.getElementById("pos-btn");
     positionButton.addEventListener("click", () => {
