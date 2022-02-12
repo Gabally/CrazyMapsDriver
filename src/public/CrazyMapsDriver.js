@@ -1,3 +1,4 @@
+
 class CrazyMapDriver {
     constructor(canvas) {
         this.canvas = canvas;
@@ -7,6 +8,9 @@ class CrazyMapDriver {
         this.canvas.style.imageRendering = "pixelated";
         window.addEventListener("resize", () => this.resizeCanvas());
         this.ctx = this.canvas.getContext("2d");
+        this.ctx.font = "25px Arial";
+        this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "white";
         this.isRunning = false;
         this.lastTimeStamp = 0;
         this.TILE_DIMENSION = 512;
@@ -21,9 +25,10 @@ class CrazyMapDriver {
         this.reverseFactor = 0.2;
         this.maxPower = 0.4;
         this.maxReverse = 0.2;
-        this.turnSpeed = 0.004;
+        this.turnSpeed = 0.002;
         this.angularDrag = 0.95;
         this.drag = 0.95;
+        this.syncLoop = setInterval(()=>{},100);
         this.car = {
             xVelocity: 0,
             yVelocity: 0,
@@ -32,6 +37,13 @@ class CrazyMapDriver {
             angle: 0,
             angularVelocity: 0
         }
+        this.ws = null;
+        this.netCars = {};
+        this.netPlayers = {};
+        this.canvasCenterX = this.canvas.width / 2;
+        this.canvasCenterY = this.canvas.height / 2;
+        this.halfCar = this.carDimensions / 2;
+        //this.socket = new Worker("socketworker.js");
     }
 
     resizeCanvas() {
@@ -85,14 +97,13 @@ class CrazyMapDriver {
     }
 
     draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         let startCol = Math.floor(this.position.x / this.TILE_DIMENSION) - 1;
         let endCol = startCol + (this.canvas.width / this.TILE_DIMENSION) + 1;
         let startRow = Math.floor(this.position.y / this.TILE_DIMENSION) - 1;
         let endRow = startRow + (this.canvas.height / this.TILE_DIMENSION) + 1;
         let offsetX = -this.position.x + startCol * this.TILE_DIMENSION;
         let offsetY = -this.position.y + startRow * this.TILE_DIMENSION;
-        let canvasCenterX = this.canvas.width / 2;
-        let canvasCenterY = this.canvas.height / 2;
         for (let c = startCol; c <= endCol; c++) {
             for (let r = startRow; r <= endRow; r++) {
                 let tile = this.gmap.getTile({ x: c, y: r });
@@ -107,17 +118,33 @@ class CrazyMapDriver {
                 );
             }
         }
-        this.ctx.translate(canvasCenterX, canvasCenterY);
+        this.ctx.translate(this.canvasCenterX, this.canvasCenterY);
         this.ctx.rotate(this.car.angle);
-        this.ctx.translate(-canvasCenterX, -canvasCenterY);
+        this.ctx.translate(-this.canvasCenterX, -this.canvasCenterY);
         this.ctx.drawImage(
             this.carSprite,
-            canvasCenterX - (this.carDimensions / 2),
-            canvasCenterY - (this.carDimensions / 2),
+            this.canvasCenterX - this.halfCar,
+            this.canvasCenterY - this.halfCar,
             this.carDimensions,
             this.carDimensions
         );
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        Object.keys(this.netCars).forEach(carK => {
+            let netX = this.netCars[carK][1] - this.position.x + this.canvasCenterX;
+            let netY =  this.netCars[carK][2] - this.position.y + this.canvasCenterY;
+            this.ctx.translate(netX, netY);
+            this.ctx.rotate(this.netCars[carK][3]);
+            this.ctx.translate(-netX, -netY);
+            this.ctx.drawImage(
+                this.carSprite,
+                netX - this.halfCar,
+                netY - this.halfCar,
+                this.carDimensions,
+                this.carDimensions
+            );
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            this.ctx.fillText(this.netPlayers[carK], netX, netY - 25); 
+        });
     }
 
     mainloop(t) {
@@ -131,12 +158,47 @@ class CrazyMapDriver {
         });
     }
 
+    async sockConnect() {
+        return new Promise((resolve, reject) => {
+            this.ws = new WebSocket(`${window.location.protocol === "http:" ? "ws" : "wss"}://${window.location.host}`);
+            this.ws.addEventListener("message", (event) => {
+                try {
+                    if (event.data.startsWith("!")) {
+                        let command = event.data.substring(1);
+                        let [username,id] = command.split("|");
+                        this.netPlayers[id] = username;
+                    } else if (event.data.startsWith("#")) {
+                        let pid = event.data.substring(1);
+                        delete this.netPlayers[pid];
+                        delete this.netCars[pid];
+                    } else {
+                        let pkt = event.data.split("|").map(e => parseFloat(e));
+                        if (this.netCars[pkt[0]]) {
+                            pkt[1]  = this.netCars[pkt[0]][1] +(pkt[1] - this.netCars[pkt[0]][1]) * 0.4; 
+                            pkt[2]  = this.netCars[pkt[0]][2] +(pkt[2] - this.netCars[pkt[0]][2]) * 0.4; 
+                        }
+                        this.netCars[pkt[0]] = pkt;
+                    }
+                } catch(error) {
+                    console.error("Bogus data received from other client");
+                    console.error(error);
+                }
+            });
+            this.ws.addEventListener("open", (event) => {
+                resolve();
+            });
+            this.ws.addEventListener("error", () => {
+                reject();
+            });
+        });
+    }
+
     async run() {
         this.isRunning = true;
         this.resizeCanvas();
         this.gmap = new GoogleMapsSatellite();
         await this.gmap.init();
-        this.carSprite = await this.loadImage("car.png");
+        this.carSprite = await this.loadImage("imgs/car.png");
         this.keyboard.startListening();
         try {
             let geoipReq = await fetch("https://reallyfreegeoip.org/json/");
@@ -145,10 +207,19 @@ class CrazyMapDriver {
         } catch(e) {
             console.error("Unknown error occurred while fetching geolocation data");
         }
+        try {
+            await this.sockConnect();
+        } catch(e) {
+            console.error("An error occurred while connecting to the socket");
+        }
+        this.syncLoop = setInterval(() => {
+            this.ws.send(`${this.position.x}|${this.position.y}|${this.car.angle}`);
+        }, 250);
         this.mainloop(0);
-    } 
+    }
 
     stop() {
+        clearInterval(this.syncLoop);
         this.isRunning = false;
     }
 

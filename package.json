@@ -1,0 +1,36 @@
+{
+  "name": "crazymapsdriver",
+  "version": "0.0.1",
+  "description": "Drive around in google maps with friends",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gabally/CrazyMapsDriver.git"
+  },
+  "keywords": [
+    "drive",
+    "driving",
+    "maps",
+    "google",
+    "online",
+    "game",
+    "multiplayer"
+  ],
+  "author": "Gabriele Morisano",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Gabally/CrazyMapsDriver/issues"
+  },
+  "homepage": "https://github.com/Gabally/CrazyMapsDriver#readme",
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  },
+  "dependencies": {
+    "express": "^4.17.2",
+    "ws": "^8.5.0"
+  }
+}
