@@ -20,13 +20,15 @@
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            position: relative;
+            height: 100vh;
         }
         #game {
             border: 5px solid black;
             border-radius: 2px;
         }
         body {
-            background: url("imgs/bg.png");
+            background: grey;
             background-repeat: no-repeat;
             background-size: cover;
             font-family: 'Bayon', sans-serif;
@@ -39,15 +41,9 @@
             border: 0px;
             outline: none;
         }
-        #header {
-            display: flex;
-        }
-        #logo {
-            width: 32px;
-            margin: 5px;
-            height: 32px;
-        }
         button {
+            top: 10px;
+            left: 10px;
             cursor: pointer;
         }
         button:hover {
@@ -56,22 +52,18 @@
         button:active {
             background: rgb(153, 153, 153);
         }
+        #pos-btn {
+            position: absolute;
+        }
     </style>
 </head>
 <body>
     <div id="container">
-        <div id="header" class="el">
-            <h2>Crazy Map Driver</h2>
-            <img src="imgs/crazymapdriver.png" id="logo" alt="">
-        </div>
         <button class="el" id="pos-btn">
             <img src="imgs/position-crosshair.svg" alt="">
         </button>
         <canvas id="game">
         </canvas>
-        <div class="el">
-            WASD - To move around
-        </div>
     </div>
 </body>
 <script src="CrazyMapsDriver.js"></script>

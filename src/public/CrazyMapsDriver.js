@@ -59,8 +59,8 @@ class CrazyMapDriver {
     }
 
     resizeCanvas() {
-        let newWidth = window.innerWidth - 10;
-        let newHeight = window.innerHeight * 0.9;
+        let newWidth = window.innerWidth;
+        let newHeight = window.innerHeight;
         let newWidthToHeight = newWidth / newHeight;
         if (newWidthToHeight > this.ratio) {
           newWidth = newHeight * this.ratio;
