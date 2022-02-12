@@ -1,6 +1,6 @@
 # Crazy Maps Driver
 <p align="center">
-<img src="src/crazymapdriver.png" width="150" />
+<img src="src/public/imgs/crazymapdriver.png" width="150" />
 </p>
 
 ## Drive a car around google maps satellite view for no reason whatsoever!
