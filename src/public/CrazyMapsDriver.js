@@ -56,6 +56,7 @@ class CrazyMapDriver {
         }
         this.lastNetUpdate = 0;
         this.deltaNetUpdate = 100;
+        this.touches = [];
     }
 
     resizeCanvas() {
@@ -71,19 +72,38 @@ class CrazyMapDriver {
           this.canvas.style.width = newWidth + "px";
           this.canvas.style.height = newHeight + "px";
         }
-      }
+    }
+
+    touchStart(event) {
+        event.preventDefault();
+        let rect = this.canvas.getBoundingClientRect();
+        this.touches.push({
+            x: event.changedTouches[0].clientX - rect.left,
+            y: event.changedTouches[0].clientY - rect.top
+        });
+        console.log(event);
+    }
+
+    touchEnd(event) {
+        event.preventDefault();
+        let rect = this.canvas.getBoundingClientRect();
+        let x = event.changedTouches[0].clientX - rect.left;
+        let y = event.changedTouches[0].clientY - rect.top
+        this.touches = this.touches.filter(p => p.x !== x && p.y !== y);
+        console.log(event);
+    }
 
     update(time) {
-        let deltaTime = (time - this.lastTimeStamp) / 10;
+        let deltaTime = (time - this.lastTimeStamp) / 15;
         if (this.keyboard.isKeyPressed("KeyW")) {
-            this.car.power += this.powerFactor;
+            this.car.power += this.powerFactor * deltaTime;
         } else {
-            this.car.power -= this.powerFactor;
+            this.car.power -= this.powerFactor * deltaTime;
         }
         if (this.keyboard.isKeyPressed("KeyS")) {
-            this.car.reverse += this.reverseFactor;
+            this.car.reverse += this.reverseFactor * deltaTime;
         } else {
-            this.car.reverse -= this.reverseFactor;
+            this.car.reverse -= this.reverseFactor * deltaTime;
         }
 
         this.car.power = Math.max(0, Math.min(this.maxPower, this.car.power));
@@ -92,10 +112,10 @@ class CrazyMapDriver {
         const direction = this.car.power > this.car.reverse ? 1 : -1;
 
         if (this.keyboard.isKeyPressed("KeyA")) {
-            this.car.angularVelocity -= direction * this.turnSpeed;
+            this.car.angularVelocity -= direction * this.turnSpeed * deltaTime;
         }
         if (this.keyboard.isKeyPressed("KeyD")) {
-            this.car.angularVelocity += direction * this.turnSpeed;
+            this.car.angularVelocity += direction * this.turnSpeed * deltaTime;
         }
 
         let eVel = this.car.power - this.car.reverse;
@@ -223,6 +243,8 @@ class CrazyMapDriver {
             }
         }
         this.socket.postMessage({ connect: `${window.location.protocol === "http:" ? "ws" : "wss"}://${window.location.host}` });
+        this.canvas.addEventListener("touchstart", (e) => this.touchStart(e));
+        this.canvas.addEventListener("touchend", (e) => this.touchEnd(e));
         this.mainloop(0);
     }
 
