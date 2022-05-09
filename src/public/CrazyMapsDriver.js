@@ -383,6 +383,11 @@ window.onload = () => {
             game.setPosition(lat, long);
         }
     });
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            game.setPosition(pos.coords.latitude,pos.coords.longitude);
+        });
+    }
     document.getElementById("mobile-switch").addEventListener("change", (e) => {
         let powerControls = document.querySelector(".power-controls");
         let directionControls = document.querySelector(".direction-controls");
