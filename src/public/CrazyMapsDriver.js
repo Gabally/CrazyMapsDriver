@@ -56,12 +56,15 @@ class CrazyMapDriver {
         }
         this.lastNetUpdate = 0;
         this.deltaNetUpdate = 100;
-        this.touches = [];
+        this.touchForward = false;
+        this.touchReverse = false;
+        this.touchLeft = false;
+        this.touchRight = false;
     }
 
     resizeCanvas() {
-        let newWidth = window.innerWidth;
-        let newHeight = window.innerHeight;
+        let newWidth = window.innerWidth - 10;
+        let newHeight = window.innerHeight - 10;
         let newWidthToHeight = newWidth / newHeight;
         if (newWidthToHeight > this.ratio) {
           newWidth = newHeight * this.ratio;
@@ -74,33 +77,14 @@ class CrazyMapDriver {
         }
     }
 
-    touchStart(event) {
-        event.preventDefault();
-        let rect = this.canvas.getBoundingClientRect();
-        this.touches.push({
-            x: event.changedTouches[0].clientX - rect.left,
-            y: event.changedTouches[0].clientY - rect.top
-        });
-        console.log(event);
-    }
-
-    touchEnd(event) {
-        event.preventDefault();
-        let rect = this.canvas.getBoundingClientRect();
-        let x = event.changedTouches[0].clientX - rect.left;
-        let y = event.changedTouches[0].clientY - rect.top
-        this.touches = this.touches.filter(p => p.x !== x && p.y !== y);
-        console.log(event);
-    }
-
     update(time) {
         let deltaTime = (time - this.lastTimeStamp) / 15;
-        if (this.keyboard.isKeyPressed("KeyW")) {
+        if (this.keyboard.isKeyPressed("KeyW") || this.touchForward) {
             this.car.power += this.powerFactor * deltaTime;
         } else {
             this.car.power -= this.powerFactor * deltaTime;
         }
-        if (this.keyboard.isKeyPressed("KeyS")) {
+        if (this.keyboard.isKeyPressed("KeyS") || this.touchReverse) {
             this.car.reverse += this.reverseFactor * deltaTime;
         } else {
             this.car.reverse -= this.reverseFactor * deltaTime;
@@ -111,10 +95,10 @@ class CrazyMapDriver {
 
         const direction = this.car.power > this.car.reverse ? 1 : -1;
 
-        if (this.keyboard.isKeyPressed("KeyA")) {
+        if (this.keyboard.isKeyPressed("KeyA") || this.touchLeft) {
             this.car.angularVelocity -= direction * this.turnSpeed * deltaTime;
         }
-        if (this.keyboard.isKeyPressed("KeyD")) {
+        if (this.keyboard.isKeyPressed("KeyD") || this.touchRight) {
             this.car.angularVelocity += direction * this.turnSpeed * deltaTime;
         }
 
@@ -245,6 +229,21 @@ class CrazyMapDriver {
         this.socket.postMessage({ connect: `${window.location.protocol === "http:" ? "ws" : "wss"}://${window.location.host}` });
         this.canvas.addEventListener("touchstart", (e) => this.touchStart(e));
         this.canvas.addEventListener("touchend", (e) => this.touchEnd(e));
+        let fwdTouch = document.getElementById("t-f");
+        fwdTouch.addEventListener("touchstart", () => { this.touchForward = true; }, false);
+        fwdTouch.addEventListener("touchend", () => { this.touchForward = false; }, false);
+        let bckwdTouch = document.getElementById("t-b");
+        bckwdTouch.addEventListener("touchstart", () => { this.touchReverse = true; }, false);
+        bckwdTouch.addEventListener("touchend", () => { this.touchReverse = false; }, false);
+        let leftTouch = document.getElementById("t-l");
+        leftTouch.addEventListener("touchstart", () => { this.touchLeft = true; }, false);
+        leftTouch.addEventListener("touchend", () => { this.touchLeft = false; }, false);
+        let rightTouch = document.getElementById("t-r");
+        rightTouch.addEventListener("touchstart", () => { this.touchRight = true; }, false);
+        rightTouch.addEventListener("touchend", () => { this.touchRight = false; }, false);
+        window.addEventListener("orientationchange", () => {
+            this.resizeCanvas();
+        }, false);
         this.mainloop(0);
     }
 
@@ -382,6 +381,17 @@ window.onload = () => {
         if (pos) {
             let [lat, long] = pos.split(",").map(e => parseFloat(e));
             game.setPosition(lat, long);
+        }
+    });
+    document.getElementById("mobile-switch").addEventListener("change", (e) => {
+        let powerControls = document.querySelector(".power-controls");
+        let directionControls = document.querySelector(".direction-controls");
+        if(e.target.checked) {
+            powerControls.style.display = "block";
+            directionControls.style.display = "flex";
+        } else {
+            powerControls.style.display = "none";
+            directionControls.style.display = "none";
         }
     });
 };

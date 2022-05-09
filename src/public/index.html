@@ -21,7 +21,7 @@
             align-items: center;
             flex-direction: column;
             position: relative;
-            height: 100vh;
+            height: 80vh;
         }
         #game {
             border: 5px solid black;
@@ -55,6 +55,60 @@
         #pos-btn {
             position: absolute;
         }
+        .power-controls {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            font-size: 30px;
+            display: none;
+        }
+        #t-f {
+            transform: rotate(180deg);
+        }
+        .power-controls > div {
+            margin: 3px;
+            background: orange;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+        .direction-controls {
+            display: flex;
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            font-size: 30px;
+            user-select: none;
+            display: none;
+        }
+        .direction-controls > div {
+            margin: 3px;
+            background: orange;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #t-l {
+            transform: rotate(90deg);
+        }
+        #t-r {
+            transform: rotate(-90deg);
+        }
+        .mobile-enable {
+            position: absolute;
+            right: 10px;
+            top: 15px;
+            background: white;
+            padding: 3px;
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
@@ -62,8 +116,28 @@
         <button class="el" id="pos-btn">
             <img src="imgs/position-crosshair.svg" alt="">
         </button>
+        <div class="mobile-enable">
+            <input type="checkbox" id="mobile-switch">
+            Mobile Controls 📱
+        </div>
+        <div class="direction-controls">
+            <div id="t-l">
+                ⬇
+            </div>
+            <div id="t-r">
+                ⬇
+            </div>
+        </div>
         <canvas id="game">
         </canvas>
+        <div class="power-controls">
+            <div id="t-f">
+                ⬇
+            </div>
+            <div id="t-b">
+                ⬇
+            </div>
+        </div>
     </div>
 </body>
 <script src="CrazyMapsDriver.js"></script>
